@@ -20,6 +20,10 @@ canvas.addEventListener("mousemove", function (event) {
     mouse.y = event.y;
 });
 
+// Project settings
+let starCount = 500;
+let backgroundStarCount = 1000;
+
 let blackHole;
 let blackHoleHalo;
 let blackHoleGlow;
@@ -63,13 +67,22 @@ class DrawsCircle {
 
 class Rotates extends DrawsCircle {
     update() {
+        if(this.isStatic) {
+            return;
+        }
         this.radians += 
             (50 / Math.abs(this.orbitRadius)) * (Math.PI / (500 * this.speed));
         this.x = blackHole.x + (this.orbitRadius * Math.cos(this.radians));
         this.y = blackHole.y + (this.orbitRadius * Math.sin(this.radians));
+
         let orbitalDecay = ((1/this.orbitRadius) * 5);
-        this.orbitRadius = this.orbitRadius - orbitalDecay;
-        if(this.orbitRadius < (blackHole.size)) {
+        this.orbitRadius -= orbitalDecay;
+        
+        if(this.orbitRadius < blackHole.size) {
+            this.originColor = `rgba(255,255,255, ${1-((blackHole.size / 3) / this.orbitRadius)})`;
+        }
+        
+        if(this.orbitRadius < (blackHole.size / 3)) {
             starArray.push(generateStar());
             this.deleteSelf();
         }
@@ -82,14 +95,18 @@ class Rotates extends DrawsCircle {
 }
 
 class Star extends Rotates {
-    constructor(x, y, size, color, speed) {
+    constructor(x, y, size, color, speed, isStatic = false) {
         super();
         this.x = x;
         this.y = y;
         this.originSize = size;
         this.size = size;
+        this.isStatic = isStatic;
+        // Color should be a function of distance from black hole
+        this.originColor = color;
         this.color = color;
         this.radians = this.getRadian(x, y);
+        // Orbit radius should instead be hypotenuse (enough data is provided for this)
         this.orbitRadius = Math.max(Math.abs(this.deltaY), Math.abs(this.deltaX));
         this.speed = speed;
         this.isInMouse = false;
@@ -111,7 +128,7 @@ class Star extends Rotates {
             }
         } else {
             this.isInMouse = false;
-            this.color = "white";
+            this.color = this.originColor;
             this.size = this.originSize;
         }
     }
@@ -208,14 +225,12 @@ class BlackHole extends DrawsCircle {
 }
 
 function generateStar() {
-    let x = Math.random() * canvas.width;
-    let y = Math.random() * canvas.height;
+    let {x, y} = randomCoordinates();
     let speed = Math.random() + 0.5;
-    return new Star(x, y, Math.ceil(Math.random() * 2), "white", speed);
+    return new Star(x, y, Math.ceil(Math.random() * 2), "white", speed, false);
 }
 
 function generateStarField() {
-    const starCount = 800;
     for (let i = 0; starCount > i; i++) {
         starArray.push(generateStar());
         starArray[i].draw();
@@ -223,10 +238,8 @@ function generateStarField() {
 }
 
 function generateStarBackground() {
-    const starCount = 1000;
-    for (let i = 0; starCount > i; i++) {
-        let x = Math.random() * (canvas.width + 500);
-        let y = Math.random() * (canvas.height + 500);
+    for (let i = 0; backgroundStarCount > i; i++) {
+        let {x, y} = randomCoordinates();
         let speed = 1;
         let redShift = Math.random() * 80;
         let opacity = Math.random() * 0.8;
@@ -236,7 +249,8 @@ function generateStarBackground() {
                 y,
                 Math.ceil(Math.random() * 2),
                 `rgba(${42 + redShift}, 8, 224, ${opacity})`,
-                speed
+                speed,
+                true
             )
         );
         starBackgroundArray[i].draw();
@@ -246,8 +260,7 @@ function generateStarBackground() {
 function generatePlanetBackground() {
     const planetCount = 10;
     for (let i = 0; planetCount > i; i++) {
-        let x = Math.random() * canvas.width;
-        let y = Math.random() * canvas.height;
+        let {x, y} = randomCoordinates();
         let speed = 1;
         planetBackgroundArray.push(
             new Star(
@@ -255,29 +268,39 @@ function generatePlanetBackground() {
                 y,
                 Math.ceil(Math.random() * 15),
                 `rgba(255, 181, 126, ${Math.random() * 0.3})`,
-                speed
+                speed,
+                false
             )
         );
         planetBackgroundArray[i].draw();
     }
 }
 
-function init() {
-    // set up initial items on canvas, animate after to begin frames
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function generateBlackHole() {
     blackHoleGlow = new BlackHoleGlow();
     blackHoleGlow.draw();
     blackHoleHalo = new BlackHoleHalo();
     blackHoleHalo.draw();
     blackHole = new BlackHole();
     blackHole.draw();
+}
+
+function randomCoordinates() {
+    let x = Math.random() * canvas.width;
+    let y = Math.random() * canvas.height;
+    return {
+        x,
+        y
+    }
+}
+
+function init() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    generateBlackHole();
     generateStarBackground();
     generatePlanetBackground();
     generateStarField();
-    // Add a white circle to the center of the canvas
-    // Add some particles around the page (static)
-    // work how how to move them rotating around center point
-
     animate();
 }
 
