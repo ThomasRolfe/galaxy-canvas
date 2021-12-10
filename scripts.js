@@ -38,7 +38,7 @@ class DrawsCircle {
     getRadian(x, y) {
         this.deltaX = x - blackHole.x;
         this.deltaY = y - blackHole.y;
-        return Math.atan2(this.deltaX, this.deltaY);
+        return Math.atan2(this.deltaY, this.deltaX);
     }
 
     mouseHasCollided(a, b, x, y, r) {
@@ -61,7 +61,27 @@ class DrawsCircle {
     }
 }
 
-class Star extends DrawsCircle {
+class Rotates extends DrawsCircle {
+    update() {
+        this.radians += 
+            (50 / Math.abs(this.orbitRadius)) * (Math.PI / (500 * this.speed));
+        this.x = blackHole.x + (this.orbitRadius * Math.cos(this.radians));
+        this.y = blackHole.y + (this.orbitRadius * Math.sin(this.radians));
+        let orbitalDecay = ((1/this.orbitRadius) * 5);
+        this.orbitRadius = this.orbitRadius - orbitalDecay;
+        if(this.orbitRadius < (blackHole.size)) {
+            starArray.push(generateStar());
+            this.deleteSelf();
+        }
+    }
+
+    deleteSelf() {
+        let index = starArray.indexOf(this);
+        starArray.splice(index, 1);
+    }
+}
+
+class Star extends Rotates {
     constructor(x, y, size, color, speed) {
         super();
         this.x = x;
@@ -70,15 +90,12 @@ class Star extends DrawsCircle {
         this.size = size;
         this.color = color;
         this.radians = this.getRadian(x, y);
-        this.orbitRadius = Math.abs(this.deltaX);
+        this.orbitRadius = Math.max(Math.abs(this.deltaY), Math.abs(this.deltaX));
         this.speed = speed;
         this.isInMouse = false;
     }
-    update() {
-        this.radians +=
-            (50 / Math.abs(this.deltaX)) * (Math.PI / (500 * this.speed));
-        this.x = blackHole.x + Math.abs(this.deltaX) * Math.cos(this.radians);
-        this.y = blackHole.y + Math.abs(this.deltaX) * Math.sin(this.radians);
+
+    checkCollisions() {
         let mouseHasColided = this.mouseHasCollided(
             mouse.x,
             mouse.y,
@@ -190,15 +207,17 @@ class BlackHole extends DrawsCircle {
     }
 }
 
+function generateStar() {
+    let x = Math.random() * canvas.width;
+    let y = Math.random() * canvas.height;
+    let speed = Math.random() + 0.5;
+    return new Star(x, y, Math.ceil(Math.random() * 2), "white", speed);
+}
+
 function generateStarField() {
-    const starCount = 80;
+    const starCount = 800;
     for (let i = 0; starCount > i; i++) {
-        let x = Math.random() * canvas.width;
-        let y = Math.random() * canvas.height;
-        let speed = Math.random() + 0.5;
-        starArray.push(
-            new Star(x, y, Math.ceil(Math.random() * 2), "white", speed)
-        );
+        starArray.push(generateStar());
         starArray[i].draw();
     }
 }
@@ -275,6 +294,7 @@ function animate() {
     blackHole.draw();
     for (let i = 0; starArray.length > i; i++) {
         starArray[i].update();
+        starArray[i].checkCollisions();
         starArray[i].draw();
     }
     requestAnimationFrame(animate);
